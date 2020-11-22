@@ -104,6 +104,10 @@ void shutdownMudOS(int exit_code) {
  No, mark-and-sweep solution won't work.  Exercise for reader.  */
 static int num_objects_this_thread = 0;
 
+//created by zhang jun, 2020-11-21, in order to send errcode to client,
+//this var is used by efun, in path"src/packages/errcode/*"   //TODO
+int current_errcode = 0;
+
 #ifndef NO_ENVIRONMENT
 static object_t *restrict_destruct;
 #endif

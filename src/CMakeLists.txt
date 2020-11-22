@@ -30,6 +30,7 @@ option(PACKAGE_UIDS "uids package" ON)
 option(PACKAGE_EXTERNAL "external package" OFF)
 option(DEBUG OFF)
 option(DEBUGMALLOC ${DEBUG})
+option(PACKAGE_ERRCODE "errcode package" ON)    #自定义的错误码efun, zhang jun, 2020-11-21
 # End of list of compile options.
 
 # Globally enforce CXX17 and C11

@@ -10,6 +10,10 @@
 #include "net/ws_ascii.h"
 #include "interactive.h"
 
+//json传输
+#include "thirdparty/json/single_include/nlohmann/json.hpp"
+using json = nlohmann::json;
+
 // from comm.cc
 interactive_t *new_user(port_def_t *port, evutil_socket_t fd, sockaddr *addr, socklen_t addrlen);
 extern void on_user_logon(interactive_t *);
@@ -188,11 +192,42 @@ int ws_ascii_callback(struct lws *wsi, enum lws_callback_reasons reason, void *u
   return 0;
 }
 
-void ws_ascii_send(struct lws *wsi, const char *data, size_t len) {
-  DEBUG_CHECK(lws_get_protocol(wsi)->id != PROTOCOL_WS_ASCII, "wrong protocol!");
-  auto pss = reinterpret_cast<ws_ascii_session *>(lws_wsi_user(wsi));
-  DEBUG_CHECK(pss == nullptr, "no session data!");
+//原版的send
+// void ws_ascii_send(struct lws *wsi, const char *data, size_t len) {
+//   DEBUG_CHECK(lws_get_protocol(wsi)->id != PROTOCOL_WS_ASCII, "wrong protocol!");
+//   auto pss = reinterpret_cast<ws_ascii_session *>(lws_wsi_user(wsi));
+//   DEBUG_CHECK(pss == nullptr, "no session data!");
 
-  evbuffer_add(pss->buffer, data, len);
-  lws_callback_on_writable(wsi);
+//   evbuffer_add(pss->buffer, data, len);
+//   lws_callback_on_writable(wsi);
+// }
+
+//自改的send
+void ws_ascii_send(struct lws *wsi, const char *data, size_t len) {
+  ws_ascii_pack_and_send(wsi, data, len);
+  return;
+}
+
+void ws_ascii_pack_and_send(struct lws *wsi, const char *data, size_t len) {
+    DEBUG_CHECK(lws_get_protocol(wsi)->id != PROTOCOL_WS_ASCII, "wrong protocol!");
+    auto pss = reinterpret_cast<ws_ascii_session *>(lws_wsi_user(wsi));
+    DEBUG_CHECK(pss == nullptr, "no session data!");
+
+    //结构化返回的字符串
+    json j;
+    if (command_giver != nullptr) {
+        j["obname"] = command_giver-> obname;
+    }
+    if (pss != nullptr && pss->user != nullptr) {
+        j["cmd"] = pss->user->text;
+    }
+
+    j["errcode"] = current_errcode;
+    j["payload"] = data;
+
+    //传输到buffer
+    std::string str = j.dump();
+    evbuffer_add(pss->buffer, str.c_str(), str.length() + 1);
+    lws_callback_on_writable(wsi);
+    return;
 }
