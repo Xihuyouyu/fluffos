@@ -14,6 +14,7 @@
 #include "thirdparty/json/single_include/nlohmann/json.hpp"
 using json = nlohmann::json;
 
+
 // from comm.cc
 interactive_t *new_user(port_def_t *port, evutil_socket_t fd, sockaddr *addr, socklen_t addrlen);
 extern void on_user_logon(interactive_t *);
@@ -208,25 +209,42 @@ void ws_ascii_send(struct lws *wsi, const char *data, size_t len) {
   return;
 }
 
+
 void ws_ascii_pack_and_send(struct lws *wsi, const char *data, size_t len) {
     DEBUG_CHECK(lws_get_protocol(wsi)->id != PROTOCOL_WS_ASCII, "wrong protocol!");
     auto pss = reinterpret_cast<ws_ascii_session *>(lws_wsi_user(wsi));
     DEBUG_CHECK(pss == nullptr, "no session data!");
 
     //结构化返回的字符串
-    json j;
+    json j, jcomAck;
+    // if (command_giver != nullptr) {
+    //     j["obname"] = command_giver-> obname;
+    // }
+    // if (pss != nullptr && pss->user != nullptr) {
+    //     j["cmd"] = pss->user->text;
+    // }
+
+    // j["errcode"] = current_errcode;
+    // j["payload"] = data;
+
+    //二
     if (command_giver != nullptr) {
-        j["obname"] = command_giver-> obname;
+      jcomAck["obj"] = command_giver-> obname;
     }
     if (pss != nullptr && pss->user != nullptr) {
-        j["cmd"] = pss->user->text;
+      jcomAck["cmd"] = pss->user->text;
     }
+    jcomAck["errcode"] = current_errcode;
 
-    j["errcode"] = current_errcode;
+    j["comAck"] = jcomAck;
     j["payload"] = data;
 
     //传输到buffer
+    char header[4];
     std::string str = j.dump();
+    *(int32_t*)header = str.length() + 1;
+
+    evbuffer_add(pss->buffer, header, 4);
     evbuffer_add(pss->buffer, str.c_str(), str.length() + 1);
     lws_callback_on_writable(wsi);
     return;
